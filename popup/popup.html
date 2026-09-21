@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube Media Counter</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main>
+      <h1>YouTube Media Counter</h1>
+      <p id="page-title" class="page-title">Проверяю вкладку…</p>
+      <section id="stats" class="stats" aria-live="polite" hidden>
+        <div><span>Играет сейчас</span><strong id="playing">0</strong></div>
+        <div><span>Просмотрено всего</span><strong id="watched">0:00</strong></div>
+      </section>
+      <p id="status" class="status">Откройте страницу YouTube.</p>
+      <button id="refresh" type="button">Обновить</button>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

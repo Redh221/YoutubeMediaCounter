@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Media Counter",
+  "version": "0.1.0",
+  "description": "Показывает количество медиа-элементов на текущей странице YouTube.",
+  "action": {
+    "default_title": "YouTube Media Counter",
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*", "*://youtube.com/*"],
+      "js": ["content/media-counter.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["*://www.youtube.com/*", "*://youtube.com/*"]
+}
