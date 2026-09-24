@@ -1,0 +1,40 @@
+/* Light by default; dark follows the system unless the user picked a theme in settings (data-theme). */
+:root {
+  color-scheme: light;
+  --bg: #f7f8fa;
+  --surface: #ffffff;
+  --ink: #16191f;
+  --muted: #5f6672;
+  --line: #e3e6eb;
+  --bar: #fde3e1;
+  --accent: #e62117;
+  --playing: #188038;
+  color: var(--ink);
+  font-family: "Segoe UI", Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #17181b;
+    --surface: #222428;
+    --ink: #eceef1;
+    --muted: #9ba1ab;
+    --line: #33363c;
+    --bar: #4a1f1c;
+    --accent: #ff4e45;
+    --playing: #5bb974;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17181b;
+  --surface: #222428;
+  --ink: #eceef1;
+  --muted: #9ba1ab;
+  --line: #33363c;
+  --bar: #4a1f1c;
+  --accent: #ff4e45;
+  --playing: #5bb974;
+}
