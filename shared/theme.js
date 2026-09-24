@@ -12,6 +12,6 @@ function setTheme(theme) {
 export async function applyTheme() {
   setTheme((await loadSettings()).theme);
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes.settings) setTheme(changes.settings.newValue?.theme);
+    if (areaName === "sync" && changes.settings) setTheme(changes.settings.newValue?.theme);
   });
 }

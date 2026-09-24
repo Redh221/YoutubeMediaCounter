@@ -2,3 +2,6 @@
 Thumbs.db
 *.crx
 dist/
+
+# Private key for packing the extension (keeps the extension ID stable)
+*.pem

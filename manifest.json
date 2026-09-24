@@ -1,5 +1,6 @@
 {
   "manifest_version": 3,
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtJOjtJvsE/ETxIQT5WPRssnqTZr+03nTMY+Vltf8XsVk9OnLVWy4jFTpszaNrX2ceRqk3/56t/SaAdrMDWLbEEXRjvmI41aU82KnmgKQ88iduij1fbS1bg+nfzAjOKvhW3GYpE1j39nfknhTpXvCW0WbpDRTk0cl2ImssjT5SzSqVB+2YMznC1KqMOO9Hfbs2R84Xx9xfkG2ASQmY1xAGu3wGaF7Qx9vYE3ZifPV5dIf+wRYJehOc99znsVVFwOpIJs4meXRFSJ5LL06DRehsmhQa19aGLfCJggofYFsc5kborSNfvuK6E3xUrXFKUtGQHobnNobmeDotWeDUpmxYwIDAQAB",
   "name": "YouTube Media Counter",
   "version": "0.1.0",
   "description": "Показывает количество медиа-элементов на текущей странице YouTube.",
@@ -22,6 +23,6 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["tabs", "scripting", "storage"],
+  "permissions": ["tabs", "scripting", "storage", "alarms"],
   "host_permissions": ["*://www.youtube.com/*", "*://youtube.com/*"]
 }

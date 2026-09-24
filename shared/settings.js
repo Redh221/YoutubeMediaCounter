@@ -1,5 +1,6 @@
 export const DEFAULT_SETTINGS = {
   showBadge: true,
+  badgePeriod: "today",
   badgeFormat: "hours",
   badgeColor: "#e62117",
   theme: "system",
@@ -9,6 +10,11 @@ export const THEMES = [
   { value: "system", label: "Как в системе" },
   { value: "light", label: "Светлая" },
   { value: "dark", label: "Тёмная" },
+];
+
+export const BADGE_PERIODS = [
+  { value: "today", label: "Сегодня" },
+  { value: "week", label: "7 дней" },
 ];
 
 export const BADGE_FORMATS = [
@@ -26,14 +32,19 @@ export const BADGE_COLORS = [
   { value: "#5f6368", label: "Серый" },
 ];
 
+// Settings live in chrome.storage.sync so they follow the Google account across devices.
 export async function loadSettings() {
-  const { settings } = await chrome.storage.local.get({ settings: {} });
+  let { settings } = await chrome.storage.sync.get("settings");
+  if (!settings) {
+    // Settings saved before cloud sync was added.
+    ({ settings } = await chrome.storage.local.get("settings"));
+  }
   return { ...DEFAULT_SETTINGS, ...settings };
 }
 
 export async function saveSettings(changes) {
   const settings = await loadSettings();
-  await chrome.storage.local.set({ settings: { ...settings, ...changes } });
+  await chrome.storage.sync.set({ settings: { ...settings, ...changes } });
 }
 
 // Badges fit about four characters. Any watched time shows as at least the smallest unit,

@@ -1,4 +1,4 @@
-import { BADGE_COLORS, BADGE_FORMATS, THEMES, loadSettings, saveSettings } from "./settings.js";
+import { BADGE_COLORS, BADGE_FORMATS, BADGE_PERIODS, THEMES, loadSettings, saveSettings } from "./settings.js";
 
 function segmented(name, options) {
   return `
@@ -29,6 +29,10 @@ const TEMPLATE = `
         <input type="checkbox" name="showBadge" role="switch" />
       </label>
       <div class="settings-row">
+        <span>Период</span>
+        ${segmented("badgePeriod", BADGE_PERIODS)}
+      </div>
+      <div class="settings-row">
         <span>Формат</span>
         ${segmented("badgeFormat", BADGE_FORMATS)}
       </div>
@@ -50,7 +54,7 @@ const TEMPLATE = `
       <legend>Данные</legend>
       <button type="button" data-action="reset" class="settings-button">Обнулить всё время</button>
       <div class="settings-confirm" hidden>
-        <span>Стереть общее время и статистику каналов?</span>
+        <span>Стереть время и статистику каналов на всех устройствах?</span>
         <button type="button" data-action="cancel-reset" class="settings-button">Отмена</button>
         <button type="button" data-action="confirm-reset" class="settings-button settings-danger">Обнулить</button>
       </div>
@@ -68,6 +72,7 @@ export async function mountSettings(container) {
 
   const settings = await loadSettings();
   form.showBadge.checked = settings.showBadge;
+  form.badgePeriod.value = settings.badgePeriod;
   form.badgeFormat.value = settings.badgeFormat;
   form.badgeColor.value = settings.badgeColor;
   form.theme.value = settings.theme;

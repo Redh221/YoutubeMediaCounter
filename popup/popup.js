@@ -9,6 +9,7 @@ const week = document.querySelector("#week");
 const channelList = document.querySelector("#channel-list");
 const channelsEmpty = document.querySelector("#channels-empty");
 const errorBox = document.querySelector("#error");
+const devices = document.querySelector("#devices");
 
 function formatDuration(seconds) {
   const totalMinutes = Math.floor(seconds / 60);
@@ -17,6 +18,15 @@ function formatDuration(seconds) {
   if (hours > 0) return `${hours} ч ${minutes} мин`;
   if (totalMinutes > 0) return `${minutes} мин`;
   return seconds > 0 ? "< 1 мин" : "0 мин";
+}
+
+function renderDevices(count) {
+  devices.hidden = count < 2;
+  const lastDigit = count % 10;
+  const word =
+    lastDigit >= 2 && lastDigit <= 4 && (count % 100 < 12 || count % 100 > 14) ? "устройства" : "устройств";
+  devices.textContent = `${count} ${word}`;
+  devices.title = "Время сложено со всех устройств с вашим Google-аккаунтом";
 }
 
 function createAvatar(name, avatar) {
@@ -109,6 +119,7 @@ async function refresh() {
   }
   if (weekStats.status === "fulfilled" && weekStats.value) {
     week.textContent = formatDuration(weekStats.value.weekSeconds);
+    renderDevices(weekStats.value.devices ?? 1);
     renderChannels(weekStats.value.topChannels);
     errorBox.hidden = true;
   } else {

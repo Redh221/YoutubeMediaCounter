@@ -35,10 +35,12 @@ body { width: 330px; margin: 0; background: var(--bg); }
   box-shadow: 0 6px 18px -12px #00000040;
 }
 .total-value { font-size: 32px; font-weight: 700; line-height: 1.15; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.week {
-  justify-self: start; margin-top: 6px; padding: 3px 10px; border-radius: 999px;
+.total-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.week, .devices {
+  padding: 3px 10px; border-radius: 999px;
   background: var(--bg); color: var(--muted); font-size: 12px;
 }
+.devices::before { content: "☁ "; }
 .week b { color: var(--ink); font-weight: 600; }
 
 /* Top channels */
