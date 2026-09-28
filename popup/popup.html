@@ -1,11 +1,12 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>YouTube Media Counter</title>
     <link rel="stylesheet" href="../shared/theme.css" />
     <link rel="stylesheet" href="../shared/settings-form.css" />
+    <link rel="stylesheet" href="../shared/player-card.css" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -13,35 +14,38 @@
     <main id="main-view" class="view">
       <header class="header">
         <h1 class="brand">Media Counter</h1>
-        <span id="now-playing" class="chip">Проверяю вкладку…</span>
-        <button id="open-settings" class="icon-button" type="button" aria-label="Настройки" title="Настройки">
+        <span id="now-playing" class="chip" data-i18n="nowChecking"></span>
+        <button id="open-settings" class="icon-button" type="button" data-i18n-aria-label="settings" data-i18n-title="settings">
           <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
         </button>
       </header>
 
+      <!-- Controls a YouTube tab's player from anywhere, like the media card in a phone's notification shade. -->
+      <section id="player" data-i18n-aria-label="player" hidden></section>
+
       <section class="total" aria-live="polite">
-        <span class="label">Просмотрено всего</span>
-        <strong id="watched" class="total-value">0 мин</strong>
+        <span class="label" data-i18n="totalShort" data-i18n-title="totalFull"></span>
+        <strong id="watched" class="total-value"></strong>
         <div class="total-meta">
-          <span class="week">За 7 дней <b id="week">0 мин</b></span>
+          <span class="week"><span data-i18n="last7Days"></span> <b id="week"></b></span>
           <span id="devices" class="devices" hidden></span>
         </div>
       </section>
 
       <section class="channels">
-        <h2 class="label">Топ каналов за неделю</h2>
+        <h2 class="label" data-i18n="topChannels"></h2>
         <p id="error" class="error" role="alert" hidden></p>
         <ol id="channel-list" class="channel-list"></ol>
-        <p id="channels-empty" class="empty">Пока нет данных. Включите видео на YouTube, и каналы появятся здесь.</p>
+        <p id="channels-empty" class="empty" data-i18n="channelsEmpty"></p>
       </section>
     </main>
 
     <section id="settings-view" class="view" hidden>
       <header class="header">
-        <button id="close-settings" class="icon-button" type="button" aria-label="Назад" title="Назад">
+        <button id="close-settings" class="icon-button" type="button" data-i18n-aria-label="back" data-i18n-title="back">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
-        <h1 class="view-title">Настройки</h1>
+        <h1 class="view-title" data-i18n="settings"></h1>
       </header>
       <div id="settings"></div>
     </section>

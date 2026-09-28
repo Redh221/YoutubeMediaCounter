@@ -38,3 +38,13 @@
   --accent: #ff4e45;
   --playing: #5bb974;
 }
+
+/* Round icon button shared by the popup and the pinned player */
+.icon-button {
+  display: grid; place-items: center; flex: none; width: 32px; height: 32px; padding: 0;
+  border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--ink); cursor: pointer;
+  transition: background-color 0.15s, transform 0.15s;
+}
+.icon-button:hover { background: var(--bg); transform: rotate(-8deg); }
+.icon-button svg { width: 17px; height: 17px; }
+.icon-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

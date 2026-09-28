@@ -1,7 +1,10 @@
+import { formatDuration, setupI18n, t } from "../shared/i18n.js";
 import { mountSettings } from "../shared/settings-form.js";
+import { focusTab, mountPlayer, sendToTab } from "../shared/player-card.js";
 import { applyTheme } from "../shared/theme.js";
 
 applyTheme();
+await setupI18n();
 
 const nowPlaying = document.querySelector("#now-playing");
 const watched = document.querySelector("#watched");
@@ -11,22 +14,11 @@ const channelsEmpty = document.querySelector("#channels-empty");
 const errorBox = document.querySelector("#error");
 const devices = document.querySelector("#devices");
 
-function formatDuration(seconds) {
-  const totalMinutes = Math.floor(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours > 0) return `${hours} ч ${minutes} мин`;
-  if (totalMinutes > 0) return `${minutes} мин`;
-  return seconds > 0 ? "< 1 мин" : "0 мин";
-}
-
 function renderDevices(count) {
   devices.hidden = count < 2;
-  const lastDigit = count % 10;
-  const word =
-    lastDigit >= 2 && lastDigit <= 4 && (count % 100 < 12 || count % 100 > 14) ? "устройства" : "устройств";
-  devices.textContent = `${count} ${word}`;
-  devices.title = "Время сложено со всех устройств с вашим Google-аккаунтом";
+  // Just the number, to keep the watched-time card on one line; the tooltip spells it out.
+  devices.textContent = String(count);
+  devices.title = t("devicesTitle", { devices: t("devices", { count }) });
 }
 
 function createAvatar(name, avatar) {
@@ -87,20 +79,13 @@ function renderChannels(channels) {
 }
 
 async function getPlayingCount(tabId) {
-  try {
-    const { playing } = await chrome.tabs.sendMessage(tabId, { type: "GET_PLAYING_COUNT" });
-    return playing;
-  } catch {
-    // The content script isn't there yet (e.g. the tab was open before the extension loaded).
-    await chrome.scripting.executeScript({ target: { tabId }, files: ["content/media-counter.js"] });
-    return 0;
-  }
+  return (await sendToTab(tabId, { type: "GET_PLAYING_COUNT" }))?.playing ?? 0;
 }
 
 function renderNowPlaying(playing) {
   nowPlaying.dataset.state = playing === null ? "off" : playing > 0 ? "playing" : "idle";
   nowPlaying.textContent =
-    playing === null ? "Не YouTube" : playing > 0 ? `Играет: ${playing}` : "На паузе";
+    playing === null ? t("notYouTube") : playing > 0 ? t("playingCount", { count: playing }) : t("paused");
 }
 
 async function refresh() {
@@ -124,7 +109,7 @@ async function refresh() {
     errorBox.hidden = true;
   } else {
     errorBox.hidden = false;
-    errorBox.textContent = `Фоновый скрипт не ответил: ${weekStats.reason?.message ?? "пустой ответ"}. Перезагрузите расширение на chrome://extensions.`;
+    errorBox.textContent = t("backgroundError", { reason: weekStats.reason?.message ?? t("emptyResponse") });
   }
   renderNowPlaying(playing.value ?? null);
 }
@@ -134,11 +119,24 @@ function showView(view) {
   document.querySelector("#main-view").hidden = settingsOpen;
   document.querySelector("#settings-view").hidden = !settingsOpen;
   document.querySelector(settingsOpen ? "#close-settings" : "#open-settings").focus();
+  // Remembered in the URL: switching the language reloads the popup, which should stay in settings.
+  history.replaceState(null, "", settingsOpen ? "#settings" : "#");
 }
 
 document.querySelector("#open-settings").addEventListener("click", () => showView("settings"));
 document.querySelector("#close-settings").addEventListener("click", () => showView("main"));
 
 mountSettings(document.querySelector("#settings"));
+if (location.hash === "#settings") showView("settings");
 refresh();
 setInterval(refresh, 1000);
+mountPlayer(document.querySelector("#player"), {
+  onOpenTab: () => window.close(),
+  // The always-on-top window can only be opened by a click on the YouTube page itself.
+  // The prompt is sent first: switching tabs closes the popup and would cut this function short.
+  async onPin(tab) {
+    await sendToTab(tab.id, { type: "SHOW_PIN_PROMPT" });
+    await focusTab(tab);
+    window.close();
+  },
+});

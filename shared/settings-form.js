@@ -1,9 +1,11 @@
+import { LANGUAGES, languageLabel, t } from "./i18n.js";
 import { BADGE_COLORS, BADGE_FORMATS, BADGE_PERIODS, THEMES, loadSettings, saveSettings } from "./settings.js";
 
 function segmented(name, options) {
   return `
     <div class="settings-segmented">
       ${options
+        .map(({ value, labelKey, example }) => ({ value, label: t(labelKey), example }))
         .map(
           ({ value, label, example }) => `
             <label title="${label}">
@@ -15,31 +17,40 @@ function segmented(name, options) {
     </div>`;
 }
 
-const TEMPLATE = `
+// Built on mount, after the interface language is known.
+const template = () => `
   <form class="settings-form">
     <fieldset class="settings-group">
-      <legend>Тема</legend>
+      <legend>${t("theme")}</legend>
       ${segmented("theme", THEMES)}
     </fieldset>
 
     <fieldset class="settings-group">
-      <legend>Значок</legend>
+      <legend>${t("language")}</legend>
+      <select name="language" class="settings-select" aria-label="${t("language")}">
+        <option value="auto">${t("languageAuto")}</option>
+        ${LANGUAGES.map((language) => `<option value="${language.code}">${languageLabel(language)}</option>`).join("")}
+      </select>
+    </fieldset>
+
+    <fieldset class="settings-group">
+      <legend>${t("badge")}</legend>
       <label class="settings-switch">
-        <span>Показывать время</span>
+        <span>${t("showTime")}</span>
         <input type="checkbox" name="showBadge" role="switch" />
       </label>
       <div class="settings-row">
-        <span>Период</span>
+        <span>${t("period")}</span>
         ${segmented("badgePeriod", BADGE_PERIODS)}
       </div>
       <div class="settings-row">
-        <span>Формат</span>
+        <span>${t("format")}</span>
         ${segmented("badgeFormat", BADGE_FORMATS)}
       </div>
       <div class="settings-row">
-        <span>Цвет</span>
+        <span>${t("color")}</span>
         <div class="settings-swatches">
-          ${BADGE_COLORS.map(
+          ${BADGE_COLORS.map(({ value, labelKey }) => ({ value, label: t(labelKey) })).map(
             ({ value, label }) => `
               <label class="settings-swatch" title="${label}">
                 <input type="radio" name="badgeColor" value="${value}" aria-label="${label}" />
@@ -51,12 +62,12 @@ const TEMPLATE = `
     </fieldset>
 
     <fieldset class="settings-group">
-      <legend>Данные</legend>
-      <button type="button" data-action="reset" class="settings-button">Обнулить всё время</button>
+      <legend>${t("data")}</legend>
+      <button type="button" data-action="reset" class="settings-button">${t("resetAll")}</button>
       <div class="settings-confirm" hidden>
-        <span>Стереть время и статистику каналов на всех устройствах?</span>
-        <button type="button" data-action="cancel-reset" class="settings-button">Отмена</button>
-        <button type="button" data-action="confirm-reset" class="settings-button settings-danger">Обнулить</button>
+        <span>${t("resetConfirm")}</span>
+        <button type="button" data-action="cancel-reset" class="settings-button">${t("cancel")}</button>
+        <button type="button" data-action="confirm-reset" class="settings-button settings-danger">${t("reset")}</button>
       </div>
       <p class="settings-note" aria-live="polite"></p>
     </fieldset>
@@ -64,7 +75,7 @@ const TEMPLATE = `
 `;
 
 export async function mountSettings(container) {
-  container.innerHTML = TEMPLATE;
+  container.innerHTML = template();
   const form = container.querySelector("form");
   const resetButton = form.querySelector('[data-action="reset"]');
   const confirmBox = form.querySelector(".settings-confirm");
@@ -76,6 +87,7 @@ export async function mountSettings(container) {
   form.badgeFormat.value = settings.badgeFormat;
   form.badgeColor.value = settings.badgeColor;
   form.theme.value = settings.theme;
+  form.language.value = settings.language;
 
   form.addEventListener("change", (event) => {
     const { name, type, checked, value } = event.target;
@@ -97,7 +109,7 @@ export async function mountSettings(container) {
       await chrome.runtime.sendMessage({ type: "RESET_WATCH_TOTAL" });
       resetButton.hidden = false;
       confirmBox.hidden = true;
-      note.textContent = "Время обнулено.";
+      note.textContent = t("resetDone");
     }
   });
 }

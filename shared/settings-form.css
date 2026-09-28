@@ -46,6 +46,12 @@
 .settings-switch input:checked::after { transform: translateX(16px); }
 .settings-switch input:focus-visible { outline: 2px solid var(--accent, #e62117); outline-offset: 2px; }
 
+.settings-select {
+  width: 100%; padding: 7px 12px; border: 1px solid var(--line, #d0d5dd); border-radius: 999px;
+  background: var(--bg, #f2f4f7); color: var(--ink, #16191f); font: inherit; cursor: pointer;
+}
+.settings-select:focus-visible { outline: 2px solid var(--accent, #e62117); outline-offset: 2px; }
+
 .settings-swatches { display: flex; gap: 6px; }
 .settings-swatch { position: relative; cursor: pointer; }
 .settings-swatch input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title data-i18n="miniPlayer"></title>
+    <link rel="stylesheet" href="../shared/theme.css" />
+    <link rel="stylesheet" href="../shared/player-card.css" />
+    <style>
+      html, body { height: 100%; }
+      /* Only the window around the card lives here; the card looks exactly like the popup's. */
+      body { display: grid; align-content: start; margin: 0; padding: 4px; box-sizing: border-box; background: var(--bg); overflow: hidden; }
+      .empty { margin: 0; color: var(--muted); font-size: 13px; text-align: center; }
+      #player:not([hidden]) + .empty { display: none; }
+    </style>
+  </head>
+  <body>
+    <!-- Framed by the YouTube tab inside its always-on-top Document Picture-in-Picture window. -->
+    <section id="player" data-i18n-aria-label="player" hidden></section>
+    <p class="empty" data-i18n="noVideo"></p>
+    <script type="module" src="player.js"></script>
+  </body>
+</html>

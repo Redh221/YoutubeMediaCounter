@@ -1,3 +1,4 @@
+import { formatDuration, setLanguage, t } from "../shared/i18n.js";
 import { formatBadgeTime, loadSettings } from "../shared/settings.js";
 import { getDeviceId, isDeviceKey, loadOtherDevices, removeAllDevices, toSyncItem } from "./cloud-sync.js";
 
@@ -26,6 +27,7 @@ async function init() {
   ]);
   deviceId = id;
   settings = loadedSettings;
+  setLanguage(settings.language);
   watchedSeconds = stored.watchedSeconds;
   dailyStats = stored.dailyStats;
   // Another device reset the counter while this one was offline.
@@ -71,8 +73,6 @@ function secondsSince(firstDay) {
   }
   return seconds;
 }
-
-const BADGE_PERIOD_LABELS = { today: "сегодня", week: "за 7 дней" };
 
 function badgeSeconds() {
   return secondsSince(settings.badgePeriod === "week" ? weekStartKey() : dayKey(new Date()));
@@ -137,23 +137,18 @@ function isYouTubeUrl(url) {
   }
 }
 
-function formatFullTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return hours > 0 ? `${hours} ч ${minutes} мин` : `${minutes} мин`;
-}
-
 // The global badge stays empty; YouTube tabs get a tab-specific badge, so it only shows on YouTube.
 function updateTabBadge(tabId, url) {
   const periodSeconds = badgeSeconds();
   const seconds = periodSeconds > 0 ? Math.max(Math.floor(periodSeconds), 1) : 0;
   const onYouTube = isYouTubeUrl(url);
   const showBadge = onYouTube && settings.showBadge;
-  const period = BADGE_PERIOD_LABELS[settings.badgePeriod] ?? BADGE_PERIOD_LABELS.today;
   chrome.action.setBadgeText({ tabId, text: showBadge ? formatBadgeTime(seconds, settings.badgeFormat) : "" });
   chrome.action.setTitle({
     tabId,
-    title: onYouTube ? `YouTube Media Counter — просмотрено ${period}: ${formatFullTime(seconds)}` : "YouTube Media Counter",
+    title: onYouTube
+      ? t(settings.badgePeriod === "week" ? "badgeTitleWeek" : "badgeTitleToday", { time: formatDuration(seconds) })
+      : "YouTube Media Counter",
   });
 }
 
@@ -189,7 +184,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
       const { lastResetAt = 0 } = await chrome.storage.local.get("lastResetAt");
       if (changes.resetAt.newValue > lastResetAt) await clearLocalStats(changes.resetAt.newValue);
     }
-    if (changes.settings) settings = await loadSettings();
+    if (changes.settings) {
+      settings = await loadSettings();
+      setLanguage(settings.language);
+    }
     if (Object.keys(changes).some(isDeviceKey)) otherDevices = await loadOtherDevices(deviceId);
     updateBadge();
   });
@@ -201,7 +199,24 @@ chrome.runtime.onInstalled.addListener(({ reason }) => {
   }
 });
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Content scripts can't see their own tab ID; the pinned player needs it to address the tab.
+  if (message?.type === "GET_TAB_ID") {
+    sendResponse(sender.tab?.id ?? null);
+    return;
+  }
+
+  // Content scripts can't import the translations, so they ask for the strings they need.
+  if (message?.type === "GET_STRINGS" && Array.isArray(message.keys)) {
+    // Settings are re-read here: the tab asks right after a language change, possibly before this
+    // worker's own storage listener has caught up.
+    loadSettings().then(({ language }) => {
+      setLanguage(language);
+      sendResponse(Object.fromEntries(message.keys.map((key) => [key, t(key)])));
+    });
+    return true;
+  }
+
   if (message?.type === "GET_WATCH_TOTAL") {
     watchTotalReady.then(() => {
       sendResponse({ watchedSeconds: totalSeconds() });

@@ -1,35 +1,40 @@
+// The "system" theme is whatever Chrome reports to pages (prefers-color-scheme), i.e. the browser's
+// light/dark mode, so by default the extension looks like the browser.
 export const DEFAULT_SETTINGS = {
   showBadge: true,
   badgePeriod: "today",
   badgeFormat: "hours",
   badgeColor: "#e62117",
   theme: "system",
+  // "auto" follows the browser's language; see shared/i18n.js.
+  language: "auto",
 };
 
+// Option labels are message keys (shared/locales), translated where they are shown.
 export const THEMES = [
-  { value: "system", label: "Как в системе" },
-  { value: "light", label: "Светлая" },
-  { value: "dark", label: "Тёмная" },
+  { value: "system", labelKey: "themeSystem" },
+  { value: "light", labelKey: "themeLight" },
+  { value: "dark", labelKey: "themeDark" },
 ];
 
 export const BADGE_PERIODS = [
-  { value: "today", label: "Сегодня" },
-  { value: "week", label: "7 дней" },
+  { value: "today", labelKey: "periodToday" },
+  { value: "week", labelKey: "periodWeek" },
 ];
 
 export const BADGE_FORMATS = [
-  { value: "hours", label: "Часы", example: "1.4h" },
-  { value: "hoursMinutes", label: "Часы и минуты", example: "1h23" },
-  { value: "minutes", label: "Минуты", example: "83m" },
+  { value: "hours", labelKey: "formatHours", example: "1.4h" },
+  { value: "hoursMinutes", labelKey: "formatHoursMinutes", example: "1h23" },
+  { value: "minutes", labelKey: "formatMinutes", example: "83m" },
 ];
 
 export const BADGE_COLORS = [
-  { value: "#e62117", label: "Красный" },
-  { value: "#1a73e8", label: "Синий" },
-  { value: "#188038", label: "Зелёный" },
-  { value: "#8430ce", label: "Фиолетовый" },
-  { value: "#e8710a", label: "Оранжевый" },
-  { value: "#5f6368", label: "Серый" },
+  { value: "#e62117", labelKey: "colorRed" },
+  { value: "#1a73e8", labelKey: "colorBlue" },
+  { value: "#188038", labelKey: "colorGreen" },
+  { value: "#8430ce", labelKey: "colorPurple" },
+  { value: "#e8710a", labelKey: "colorOrange" },
+  { value: "#5f6368", labelKey: "colorGray" },
 ];
 
 // Settings live in chrome.storage.sync so they follow the Google account across devices.
