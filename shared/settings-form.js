@@ -86,6 +86,13 @@ export async function mountSettings(container) {
 
   const resetQuestion = form.querySelector('[data-ref="reset-question"]');
 
+  // The background script answers null (or not at all) when the request failed.
+  async function askBackground(message) {
+    const response = await chrome.runtime.sendMessage(message).catch(() => null);
+    if (!response) note.textContent = t("backgroundError", { reason: t("emptyResponse") });
+    return response;
+  }
+
   const [settings, { syncEnabled }] = await Promise.all([
     loadSettings(),
     chrome.storage.local.get({ syncEnabled: true }),
@@ -98,12 +105,20 @@ export async function mountSettings(container) {
   form.theme.value = settings.theme;
   form.language.value = settings.language;
 
+  // The switch is per device, so it lives in storage.local; keep the popup and the options page in step.
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === "local" && changes.syncEnabled) form.syncEnabled.checked = changes.syncEnabled.newValue;
+  });
+
   form.addEventListener("change", (event) => {
     const { name, type, checked, value } = event.target;
     if (!name) return;
     // Sync is a per-device switch, kept apart from the settings that follow the Google account.
     if (name === "syncEnabled") {
-      chrome.runtime.sendMessage({ type: "SET_SYNC_ENABLED", enabled: checked });
+      note.textContent = "";
+      askBackground({ type: "SET_SYNC_ENABLED", enabled: checked }).then((response) => {
+        form.syncEnabled.checked = response ? response.syncEnabled : !checked;
+      });
       return;
     }
     saveSettings({ [name]: type === "checkbox" ? checked : value });
@@ -121,10 +136,10 @@ export async function mountSettings(container) {
       resetButton.hidden = false;
       confirmBox.hidden = true;
     } else if (action === "confirm-reset") {
-      await chrome.runtime.sendMessage({ type: "RESET_WATCH_TOTAL" });
+      const response = await askBackground({ type: "RESET_WATCH_TOTAL" });
       resetButton.hidden = false;
       confirmBox.hidden = true;
-      note.textContent = t("resetDone");
+      if (response) note.textContent = t("resetDone");
     }
   });
 }

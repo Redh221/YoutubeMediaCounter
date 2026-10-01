@@ -20,6 +20,15 @@ globalThis.__youtubeMediaCounterTracker?.stop();
     return !video.paused && !video.ended && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
   }
 
+  function isShortsPage() {
+    return location.pathname.startsWith("/shorts/");
+  }
+
+  // A page where the channel link belongs to the video being shown.
+  function isVideoPage() {
+    return location.pathname === "/watch" || isShortsPage();
+  }
+
   function getPlayingCount() {
     return [...document.querySelectorAll("video")].filter((video) => isCountable(video) && isPlaying(video)).length;
   }
@@ -81,8 +90,7 @@ globalThis.__youtubeMediaCounterTracker?.stop();
       return { ...channel, avatar: shown?.id === channel.id ? shown.avatar : null };
     }
     // Without the bridge, the page's link is trusted only on a video page, where it belongs to the video.
-    const onVideoPage = location.pathname === "/watch" || location.pathname.startsWith("/shorts/");
-    return onVideoPage ? shown : null;
+    return isVideoPage() ? shown : null;
   }
 
   function getMainVideo() {
@@ -92,12 +100,7 @@ globalThis.__youtubeMediaCounterTracker?.stop();
         video.closest(MAIN_PLAYER_SELECTOR) &&
         !video.closest(PREVIEW_PLAYER_SELECTOR),
     );
-    return (
-      videos.find((video) => !video.paused && !video.ended) ??
-      videos.find((video) => video.closest("#movie_player, #shorts-player")) ??
-      videos[0] ??
-      null
-    );
+    return videos.find((video) => !video.paused && !video.ended) ?? videos[0] ?? null;
   }
 
   function getVideoInfo() {
@@ -110,8 +113,7 @@ globalThis.__youtubeMediaCounterTracker?.stop();
       linkedId = titleLink?.href ? new URL(titleLink.href).searchParams.get("v") : null;
     } catch {}
 
-    const onVideoPage = url.pathname === "/watch" || Boolean(shortsId);
-    const title = onVideoPage
+    const title = isVideoPage()
       ? document.title.replace(/^\(\d+\)\s*/, "").replace(/\s*-\s*YouTube$/, "")
       : titleLink?.textContent.trim();
     const id = url.searchParams.get("v") ?? shortsId ?? linkedId;
@@ -123,7 +125,10 @@ globalThis.__youtubeMediaCounterTracker?.stop();
   }
 
   // Talks to content/player-bridge.js, which runs in the page's world next to YouTube's player API.
+  // The answer is cleared first: without the bridge (e.g. between an update and its re-injection) an
+  // old answer would otherwise look like a fresh one.
   function callPlayerBridge(command) {
+    document.documentElement.removeAttribute("data-ymc-player");
     document.dispatchEvent(new CustomEvent("ymc-player-command", { detail: JSON.stringify(command) }));
     try {
       return JSON.parse(document.documentElement.getAttribute("data-ymc-player"));
@@ -137,10 +142,6 @@ globalThis.__youtubeMediaCounterTracker?.stop();
     const bridged = callPlayerBridge({ action: "get" });
     if (bridged) return { volume: bridged.volume, muted: bridged.muted };
     return { volume: Math.round(video.volume * 100), muted: video.muted };
-  }
-
-  function isShortsPage() {
-    return location.pathname.startsWith("/shorts/");
   }
 
   // "Next" in the player plays the next suggested (or playlist) video; Shorts scroll to the next short.

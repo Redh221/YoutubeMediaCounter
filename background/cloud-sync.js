@@ -2,9 +2,16 @@
 // Each device writes only its own item ("device:<id>"), and readers add all devices up,
 // so two devices watching at the same time never overwrite each other.
 
+import { daysBefore } from "../shared/dates.js";
+
 const DEVICE_PREFIX = "device:";
-// Totals of devices that went quiet, keyed by device ID: { [deviceId]: watchedSeconds }.
-const RETIRED_KEY = "retiredDevices";
+// Totals of devices that went quiet: { e: resetAt, devices: { [deviceId]: watchedSeconds } }.
+// `e` is the reset the totals count from, like a device item's, so a device that hasn't seen a reset
+// yet can't bring pre-reset totals back by writing this key.
+const RETIRED_KEY = "retired";
+// The same totals as a bare { [deviceId]: watchedSeconds } map, written by older versions. It is read
+// (and trusted) until the first write of RETIRED_KEY, which removes it.
+const LEGACY_RETIRED_KEY = "retiredDevices";
 // A device that hasn't written for this long (e.g. a reinstalled extension got a new ID) is retired:
 // its total moves into RETIRED_KEY and its item is removed, so dead items don't eat the sync quota.
 const STALE_DAYS = 30;
@@ -25,7 +32,7 @@ export function deviceKey(deviceId) {
 }
 
 export function isDeviceKey(key) {
-  return key.startsWith(DEVICE_PREFIX) || key === RETIRED_KEY;
+  return key.startsWith(DEVICE_PREFIX) || key === RETIRED_KEY || key === LEGACY_RETIRED_KEY;
 }
 
 function itemBytes(key, item) {
@@ -83,10 +90,16 @@ function lastActiveDay(item) {
   return [item.u ?? "", ...Object.keys(item.days ?? {})].sort().at(-1);
 }
 
-function staleBefore(today) {
-  const date = new Date(`${today}T00:00:00`);
-  date.setDate(date.getDate() - STALE_DAYS);
-  return date.toLocaleDateString("sv");
+// Retired totals that count from the given reset.
+function readRetired(stored, resetAt) {
+  const value = stored[RETIRED_KEY];
+  if (!value) return { ...stored[LEGACY_RETIRED_KEY] };
+  return (value.e ?? 0) < resetAt ? {} : { ...value.devices };
+}
+
+// The legacy key is moved over, and totals from before the last reset are dropped.
+function isOutdatedRetired(stored, resetAt) {
+  return LEGACY_RETIRED_KEY in stored || (RETIRED_KEY in stored && (stored[RETIRED_KEY].e ?? 0) < resetAt);
 }
 
 /**
@@ -95,17 +108,20 @@ function staleBefore(today) {
  *   device that pushes old data around the same time;
  * - devices quiet for STALE_DAYS are retired (their total is kept in RETIRED_KEY);
  * - if this device was retired while it was away, it is taken back out of RETIRED_KEY
- *   (`returned: true`), since it is about to push its full total again.
+ *   (`returned: true`), since it is about to push its full total again;
+ * - `ownMissing` tells that this device's own item is gone (another device dropped it, or the synced
+ *   data was cleared), so it has to be pushed again even if its stats haven't changed;
+ * - `resetAt` is the last reset, which this device may not have seen yet.
  */
 export async function loadCloudState(deviceId, today) {
   const stored = await chrome.storage.sync.get(null);
   const resetAt = stored.resetAt ?? 0;
-  const retired = { ...stored[RETIRED_KEY] };
+  const retired = readRetired(stored, resetAt);
   const ownKey = deviceKey(deviceId);
-  const cutoff = staleBefore(today);
+  const cutoff = daysBefore(today, STALE_DAYS);
   const devices = [];
   const toRemove = [];
-  let retiredChanged = false;
+  let retiredChanged = isOutdatedRetired(stored, resetAt);
 
   for (const [key, item] of Object.entries(stored)) {
     if (!key.startsWith(DEVICE_PREFIX) || key === ownKey) continue;
@@ -125,11 +141,14 @@ export async function loadCloudState(deviceId, today) {
     delete retired[deviceId];
     retiredChanged = true;
   }
-  if (retiredChanged) await chrome.storage.sync.set({ [RETIRED_KEY]: retired });
+  if (retiredChanged) {
+    await chrome.storage.sync.set({ [RETIRED_KEY]: { e: resetAt, devices: retired } });
+    if (LEGACY_RETIRED_KEY in stored) toRemove.push(LEGACY_RETIRED_KEY);
+  }
   if (toRemove.length > 0) await chrome.storage.sync.remove(toRemove);
 
   const retiredSeconds = Object.values(retired).reduce((sum, seconds) => sum + seconds, 0);
-  return { devices, retiredSeconds, returned };
+  return { devices, retiredSeconds, returned, ownMissing: !(ownKey in stored), resetAt };
 }
 
 export async function removeAllDevices() {

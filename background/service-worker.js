@@ -1,3 +1,4 @@
+import { dayKey, daysBefore } from "../shared/dates.js";
 import { formatDuration, setLanguage, t } from "../shared/i18n.js";
 import { formatBadgeTime, loadSettings } from "../shared/settings.js";
 import { YOUTUBE_TAB_PATTERNS, isYouTubeUrl } from "../shared/youtube.js";
@@ -53,6 +54,10 @@ async function initWithRetry() {
 
 ready().catch(() => {});
 
+function logError(error) {
+  console.error("YouTube Media Counter:", error);
+}
+
 async function init() {
   const [id, stored, loadedSettings, { resetAt = 0 }] = await Promise.all([
     getDeviceId(),
@@ -72,7 +77,7 @@ async function init() {
     if (resetAt > stored.lastResetAt) await clearLocalStats(resetAt);
     await refreshCloud();
   }
-  updateBadge();
+  updateBadge().catch(logError);
 
   if (!(await chrome.alarms.get(SYNC_ALARM))) {
     chrome.alarms.create(SYNC_ALARM, { periodInMinutes: SYNC_PERIOD_MINUTES });
@@ -91,8 +96,10 @@ async function refreshCloud() {
   const state = await loadCloudState(deviceId, dayKey(new Date()));
   otherDevices = state.devices;
   retiredSeconds = state.retiredSeconds;
-  // Other devices retired this one while it was away; its own item has to come back.
-  if (state.returned) {
+  // A reset this device hasn't heard of yet: pushing its old stats would only get them dropped again.
+  if (state.resetAt > epoch) await clearLocalStats(state.resetAt);
+  // Other devices retired this one while it was away, or dropped its item; the item has to come back.
+  if (state.returned || state.ownMissing) {
     lastPushed = "";
     await pushToCloud();
   }
@@ -129,7 +136,7 @@ async function setSyncEnabled(enabled) {
     retiredSeconds = 0;
     await chrome.storage.sync.remove(deviceKey(deviceId));
   }
-  updateBadge();
+  updateBadge().catch(logError);
 }
 
 function totalSeconds() {
@@ -155,14 +162,8 @@ function badgeSeconds() {
   return secondsSince(settings.badgePeriod === "week" ? weekStartKey() : dayKey(new Date()));
 }
 
-function dayKey(date) {
-  return date.toLocaleDateString("sv");
-}
-
 function weekStartKey() {
-  const date = new Date();
-  date.setDate(date.getDate() - (WEEK_DAYS - 1));
-  return dayKey(date);
+  return daysBefore(dayKey(new Date()), WEEK_DAYS - 1);
 }
 
 function addDailyTime(seconds, channel) {
@@ -241,7 +242,9 @@ chrome.action.setBadgeText({ text: "" });
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === "complete") {
-    ready().then(() => updateTabBadge(tabId, tab.url));
+    ready()
+      .then(() => updateTabBadge(tabId, tab.url))
+      .catch(logError);
   }
 });
 
@@ -249,30 +252,41 @@ chrome.tabs.onRemoved.addListener((tabId) => shownBadges.delete(tabId));
 
 chrome.alarms.onAlarm.addListener(({ name }) => {
   if (name !== SYNC_ALARM) return;
-  ready().then(() => {
-    // Also refreshes the badge after midnight, when "today" starts over.
-    updateBadge();
-    return pushToCloud();
-  });
+  ready()
+    .then(() => {
+      // Also refreshes the badge after midnight, when "today" starts over.
+      updateBadge().catch(logError);
+      return pushToCloud();
+    })
+    .catch(logError);
 });
+
+async function onSyncChanged(changes) {
+  // Settings follow the Google account either way; the sync switch only covers the stats.
+  if (changes.settings) {
+    settings = await loadSettings();
+    setLanguage(settings.language);
+  }
+  if (syncEnabled) {
+    if (changes.resetAt?.newValue) {
+      const { lastResetAt = 0 } = await chrome.storage.local.get("lastResetAt");
+      if (changes.resetAt.newValue > lastResetAt) await clearLocalStats(changes.resetAt.newValue);
+    }
+    // This device's own push comes back here too; only its removal matters (see refreshCloud).
+    const ownKey = deviceKey(deviceId);
+    const othersChanged = Object.entries(changes).some(
+      ([key, change]) => isDeviceKey(key) && (key !== ownKey || change.newValue === undefined),
+    );
+    if (othersChanged) await refreshCloud();
+  }
+  await updateBadge();
+}
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "sync") return;
-  ready().then(async () => {
-    // Settings follow the Google account either way; the sync switch only covers the stats.
-    if (changes.settings) {
-      settings = await loadSettings();
-      setLanguage(settings.language);
-    }
-    if (syncEnabled) {
-      if (changes.resetAt?.newValue) {
-        const { lastResetAt = 0 } = await chrome.storage.local.get("lastResetAt");
-        if (changes.resetAt.newValue > lastResetAt) await clearLocalStats(changes.resetAt.newValue);
-      }
-      if (Object.keys(changes).some(isDeviceKey)) await refreshCloud();
-    }
-    updateBadge();
-  });
+  ready()
+    .then(() => onSyncChanged(changes))
+    .catch(logError);
 });
 
 // Manifest content scripts only start with pages loaded from now on, so YouTube tabs that are
@@ -301,10 +315,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "GET_STRINGS" && Array.isArray(message.keys)) {
     // Settings are re-read here: the tab asks right after a language change, possibly before this
     // worker's own storage listener has caught up.
-    loadSettings().then(({ language }) => {
-      setLanguage(language);
-      sendResponse(Object.fromEntries(message.keys.map((key) => [key, t(key)])));
-    });
+    loadSettings()
+      .then(({ language }) => setLanguage(language))
+      .catch(logError)
+      .finally(() => sendResponse(Object.fromEntries(message.keys.map((key) => [key, t(key)]))));
     return true;
   }
 
@@ -332,18 +346,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     const validChannel = typeof channel?.id === "string" && typeof channel.name === "string" ? channel : null;
-    ready().then(() => {
-      watchedSeconds += seconds;
-      addDailyTime(seconds, validChannel);
-      updateBadge();
-      return chrome.storage.local.set({ watchedSeconds, dailyStats });
-    });
+    ready()
+      .then(() => {
+        watchedSeconds += seconds;
+        addDailyTime(seconds, validChannel);
+        updateBadge().catch(logError);
+        return chrome.storage.local.set({ watchedSeconds, dailyStats });
+      })
+      .catch(logError);
   }
 
   if (message?.type === "SET_SYNC_ENABLED") {
     ready()
       .then(() => setSyncEnabled(Boolean(message.enabled)))
-      .then(() => sendResponse({ syncEnabled }));
+      .then(
+        () => sendResponse({ syncEnabled }),
+        (error) => {
+          logError(error);
+          sendResponse(null);
+        },
+      );
     return true;
   }
 
@@ -361,9 +383,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           await chrome.storage.sync.set({ resetAt });
           await removeAllDevices();
         }
-        updateBadge();
+        await updateBadge();
       })
-      .then(() => sendResponse({ watchedSeconds: 0 }));
+      .then(
+        () => sendResponse({ watchedSeconds: 0 }),
+        (error) => {
+          logError(error);
+          sendResponse(null);
+        },
+      );
     return true;
   }
 });

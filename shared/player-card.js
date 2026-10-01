@@ -130,6 +130,10 @@ export function mountPlayer(root, { tabId = null, onPin = null, onOpenTab = null
   function setPlayerState(tab, state) {
     player = state?.hasVideo ? { tab, state, receivedAt: performance.now() } : null;
     render();
+    if (player && !player.state.paused && !animating) {
+      animating = true;
+      requestAnimationFrame(animateProgress);
+    }
   }
 
   function render() {
@@ -184,9 +188,13 @@ export function mountPlayer(root, { tabId = null, onPin = null, onOpenTab = null
     }
   }
 
+  // Smooth progress between state updates. It runs only while the video plays: the pinned window stays
+  // open for hours, and a paused card has nothing to animate.
+  let animating = false;
   function animateProgress() {
     renderProgress();
-    requestAnimationFrame(animateProgress);
+    animating = Boolean(player && !player.state.paused);
+    if (animating) requestAnimationFrame(animateProgress);
   }
 
   async function findTab() {
@@ -211,11 +219,19 @@ export function mountPlayer(root, { tabId = null, onPin = null, onOpenTab = null
     );
   }
 
+  // With many tabs a refresh can outlast the interval; overlapping ones could render out of order.
+  let refreshing = false;
   async function refresh() {
-    const startedAt = performance.now();
-    const found = await findTab().catch(() => null);
-    if (startedAt < lastControlAt) return;
-    setPlayerState(found?.tab, found?.state);
+    if (refreshing) return;
+    refreshing = true;
+    try {
+      const startedAt = performance.now();
+      const found = await findTab().catch(() => null);
+      if (startedAt < lastControlAt) return;
+      setPlayerState(found?.tab, found?.state);
+    } finally {
+      refreshing = false;
+    }
   }
 
   async function control(command) {
@@ -318,5 +334,4 @@ export function mountPlayer(root, { tabId = null, onPin = null, onOpenTab = null
 
   refresh();
   setInterval(refresh, REFRESH_MS);
-  requestAnimationFrame(animateProgress);
 }
