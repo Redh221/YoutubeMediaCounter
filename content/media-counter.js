@@ -280,7 +280,14 @@ globalThis.__youtubeMediaCounterTracker?.stop();
     const tabId = await tabIdReady;
     if (tabId === null) return;
 
-    pipWindow = await documentPictureInPicture.requestWindow(PIP_SIZE);
+    try {
+      pipWindow = await documentPictureInPicture.requestWindow(PIP_SIZE);
+    } catch (error) {
+      // E.g. the click's user activation ran out, or the feature is turned off by policy.
+      // Another click usually works, so there's nothing to tell the user.
+      console.warn("YouTube Media Counter: couldn't open the pinned player", error);
+      return;
+    }
     const pipDocument = pipWindow.document;
     // A frame's prefers-color-scheme follows the page around it, not the system, so the real system
     // theme is handed to the card and the window gets the same scheme.

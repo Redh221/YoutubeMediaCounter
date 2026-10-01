@@ -221,8 +221,9 @@ function updateTabBadge(tabId, url, seconds = badgeSeconds()) {
   const shown = `${text}\n${title}`;
   if (shownBadges.get(tabId) === shown) return;
   shownBadges.set(tabId, shown);
-  chrome.action.setBadgeText({ tabId, text });
-  chrome.action.setTitle({ tabId, title });
+  // The tab may close before the call lands; that's not an error worth logging.
+  chrome.action.setBadgeText({ tabId, text }).catch(() => {});
+  chrome.action.setTitle({ tabId, title }).catch(() => {});
 }
 
 // Only YouTube tabs carry a badge; other tabs are handled when they navigate (tabs.onUpdated).
