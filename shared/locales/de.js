@@ -21,6 +21,7 @@ export default {
   durationUnderMinute: "< 1 Min.",
 
   // Settings
+  appearance: "Darstellung",
   theme: "Design",
   themeSystem: "Wie im Browser",
   themeLight: "Hell",
@@ -43,9 +44,12 @@ export default {
   colorPurple: "Lila",
   colorOrange: "Orange",
   colorGray: "Grau",
+  syncDevices: "Zwischen Geräten synchronisieren",
+  syncHint: "Wiedergabezeit und Top-Kanäle werden über alle Geräte zusammengerechnet, auf denen Chrome mit deinem Google-Konto angemeldet und die Synchronisierung aktiv ist. Der Schalter gilt nur für dieses Gerät.",
   data: "Daten",
   resetAll: "Gesamte Zeit zurücksetzen",
   resetConfirm: "Zeit und Kanalstatistik auf allen Geräten löschen?",
+  resetConfirmLocal: "Zeit und Kanalstatistik auf diesem Gerät löschen?",
   cancel: "Abbrechen",
   reset: "Zurücksetzen",
   resetDone: "Zeit wurde zurückgesetzt.",

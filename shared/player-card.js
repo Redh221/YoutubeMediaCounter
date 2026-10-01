@@ -1,9 +1,9 @@
 import { t } from "./i18n.js";
+import { YOUTUBE_TAB_PATTERNS } from "./youtube.js";
 
 // Media card that controls a YouTube tab's player through the content script.
 // Used in the popup and in the always-on-top Picture-in-Picture window.
 
-const YOUTUBE_TAB_PATTERNS = ["*://www.youtube.com/*", "*://youtube.com/*"];
 const REFRESH_MS = 1000;
 const WHEEL_VOLUME_STEP = 5;
 // Speeds YouTube offers; the speed button moves one step up or down this list.
@@ -50,11 +50,18 @@ const template = () => `
   </div>
 `;
 
+// When each tab last got the content scripts injected by sendToTab().
+const injectedAt = new Map();
+const REINJECT_AFTER_MS = 10000;
+
 export async function sendToTab(tabId, message) {
   try {
     return await chrome.tabs.sendMessage(tabId, message);
   } catch {
-    // The content script isn't there yet (e.g. the tab was open before the extension loaded).
+    // The content script isn't there yet (e.g. a tab that couldn't be injected on install). A tab
+    // that still doesn't answer isn't injected again on every call.
+    if (Date.now() - (injectedAt.get(tabId) ?? 0) < REINJECT_AFTER_MS) return null;
+    injectedAt.set(tabId, Date.now());
     await Promise.all([
       chrome.scripting.executeScript({ target: { tabId }, files: ["content/media-counter.js"] }),
       chrome.scripting.executeScript({ target: { tabId }, files: ["content/player-bridge.js"], world: "MAIN" }),

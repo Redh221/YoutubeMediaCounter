@@ -47,9 +47,17 @@ export async function loadSettings() {
   return { ...DEFAULT_SETTINGS, ...settings };
 }
 
-export async function saveSettings(changes) {
-  const settings = await loadSettings();
-  await chrome.storage.sync.set({ settings: { ...settings, ...changes } });
+// Saves run one after another: each reads the settings the previous one wrote.
+let lastSave = Promise.resolve();
+
+export function saveSettings(changes) {
+  lastSave = lastSave
+    .catch(() => {})
+    .then(async () => {
+      const settings = await loadSettings();
+      await chrome.storage.sync.set({ settings: { ...settings, ...changes } });
+    });
+  return lastSave;
 }
 
 // Badges fit about four characters. Any watched time shows as at least the smallest unit,

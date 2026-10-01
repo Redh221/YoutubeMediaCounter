@@ -5,10 +5,23 @@ globalThis.__youtubeMediaCounterTracker?.stop();
   const lastPositions = new WeakMap();
   let pendingWatchedSeconds = 0;
 
+  // Hover previews on feed pages are videos too, but they aren't what the user is watching.
+  const PREVIEW_PLAYER_SELECTOR = "ytd-video-preview, #inline-player, #inline-preview-player, #video-preview";
+  // The page's own player: regular videos (also the miniplayer) and the active short.
+  const MAIN_PLAYER_SELECTOR = "#movie_player, #shorts-player";
+
+  // Ads play in the main player's <video>; the player carries "ad-showing" while they do.
+  function isCountable(video) {
+    const player = video.closest(MAIN_PLAYER_SELECTOR);
+    return Boolean(player) && !player.classList.contains("ad-showing") && !video.closest(PREVIEW_PLAYER_SELECTOR);
+  }
+
+  function isPlaying(video) {
+    return !video.paused && !video.ended && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+  }
+
   function getPlayingCount() {
-    return [...document.querySelectorAll("video")].filter(
-      (video) => !video.paused && !video.ended && video.readyState > HTMLMediaElement.HAVE_CURRENT_DATA,
-    ).length;
+    return [...document.querySelectorAll("video")].filter((video) => isCountable(video) && isPlaying(video)).length;
   }
 
   // YouTube renders the channel link in different places for regular videos and Shorts.
@@ -37,27 +50,47 @@ globalThis.__youtubeMediaCounterTracker?.stop();
     return null;
   }
 
+  function channelFromLink(href, name) {
+    const url = new URL(href, location.origin);
+    // The channel path (/@handle or /channel/ID) is stable; the display name can change.
+    const segments = url.pathname.split("/");
+    const id = segments.slice(0, segments[1]?.startsWith("@") ? 2 : 3).join("/");
+    return { id, name, url: `${location.origin}${id}` };
+  }
+
+  // The channel shown on the page. It lags behind for a moment after switching videos and stays in
+  // the DOM, hidden, on other pages, so watch time is attributed through getPlayingChannel().
   function getCurrentChannel() {
     for (const selector of CHANNEL_LINK_SELECTORS) {
       const link = document.querySelector(selector);
       const name = link?.textContent.trim();
       const href = link?.getAttribute("href");
       if (!name || !href) continue;
-      const url = new URL(href, location.origin);
-      // The channel path (/@handle or /channel/ID) is stable; the display name can change.
-      const segments = url.pathname.split("/");
-      const id = segments.slice(0, segments[1]?.startsWith("@") ? 2 : 3).join("/");
-      return { id, name, url: `${url.origin}${id}`, avatar: getChannelAvatar() };
+      return { ...channelFromLink(href, name), avatar: getChannelAvatar() };
     }
     return null;
   }
 
-  // Hover previews on feed pages are videos too, but they aren't what the user is watching.
-  const PREVIEW_PLAYER_SELECTOR = "ytd-video-preview, #inline-player, #video-preview";
+  // The channel of the video the player is playing, from the player's own data (player-bridge.js).
+  // The page's channel link only adds the avatar, and only when it shows the same channel.
+  function getPlayingChannel() {
+    const owner = callPlayerBridge({ action: "get" })?.owner;
+    const shown = getCurrentChannel();
+    if (owner) {
+      const channel = channelFromLink(owner.href, owner.name);
+      return { ...channel, avatar: shown?.id === channel.id ? shown.avatar : null };
+    }
+    // Without the bridge, the page's link is trusted only on a video page, where it belongs to the video.
+    const onVideoPage = location.pathname === "/watch" || location.pathname.startsWith("/shorts/");
+    return onVideoPage ? shown : null;
+  }
 
   function getMainVideo() {
     const videos = [...document.querySelectorAll("video")].filter(
-      (video) => video.readyState > HTMLMediaElement.HAVE_NOTHING && !video.closest(PREVIEW_PLAYER_SELECTOR),
+      (video) =>
+        video.readyState > HTMLMediaElement.HAVE_NOTHING &&
+        video.closest(MAIN_PLAYER_SELECTOR) &&
+        !video.closest(PREVIEW_PLAYER_SELECTOR),
     );
     return (
       videos.find((video) => !video.paused && !video.ended) ??
@@ -102,7 +135,7 @@ globalThis.__youtubeMediaCounterTracker?.stop();
   // YouTube scales video.volume for loudness normalization, so the player's own value is preferred.
   function getVolumeState(video) {
     const bridged = callPlayerBridge({ action: "get" });
-    if (bridged) return bridged;
+    if (bridged) return { volume: bridged.volume, muted: bridged.muted };
     return { volume: Math.round(video.volume * 100), muted: video.muted };
   }
 
@@ -159,27 +192,29 @@ globalThis.__youtubeMediaCounterTracker?.stop();
     }
   }
 
+  // Allowed on top of the expected progress for timer jitter; a bigger jump is a seek.
+  const SEEK_TOLERANCE_SECONDS = 1;
+
   function saveWatchedTime(video) {
-    const previousPosition = lastPositions.get(video);
-    lastPositions.set(video, video.currentTime);
+    const previous = lastPositions.get(video);
+    const now = performance.now();
+    lastPositions.set(video, { position: video.currentTime, at: now });
+    if (!previous || video.seeking || !isPlaying(video) || !isCountable(video)) return;
 
-    if (
-      previousPosition === undefined ||
-      video.paused ||
-      video.ended ||
-      video.seeking ||
-      video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA
-    ) return;
+    // Expected progress comes from the real time since the last check and the playback speed, so fast
+    // playback and throttled background timers aren't mistaken for seeking.
+    const advanced = video.currentTime - previous.position;
+    const elapsed = (now - previous.at) / 1000;
+    if (advanced <= 0 || advanced > elapsed * video.playbackRate + SEEK_TOLERANCE_SECONDS) return;
 
-    const watchedSeconds = video.currentTime - previousPosition;
-    // Large time jumps are most likely seeking, not viewing.
-    if (watchedSeconds > 0 && watchedSeconds <= 3) {
-      pendingWatchedSeconds += watchedSeconds;
-      const wholeSeconds = Math.floor(pendingWatchedSeconds);
-      if (wholeSeconds > 0) {
-        pendingWatchedSeconds -= wholeSeconds;
-        chrome.runtime.sendMessage({ type: "ADD_WATCH_TIME", seconds: wholeSeconds, channel: getCurrentChannel() });
-      }
+    // Real time spent watching, not video time: an hour of video at 2x counts as half an hour.
+    pendingWatchedSeconds += advanced / video.playbackRate;
+    const wholeSeconds = Math.floor(pendingWatchedSeconds);
+    if (wholeSeconds > 0) {
+      pendingWatchedSeconds -= wholeSeconds;
+      chrome.runtime
+        .sendMessage({ type: "ADD_WATCH_TIME", seconds: wholeSeconds, channel: getPlayingChannel() })
+        .catch(() => {});
     }
   }
 
@@ -327,6 +362,12 @@ globalThis.__youtubeMediaCounterTracker?.stop();
   }
 
   function tick() {
+    // After the extension is reloaded or updated, this copy keeps running in the tab but can no longer
+    // reach the extension (chrome.runtime.id is gone); a fresh copy takes over, so this one stops.
+    if (!chrome.runtime?.id) {
+      stop();
+      return;
+    }
     trackPlayingVideos();
     ensurePinButton();
   }
@@ -351,13 +392,17 @@ globalThis.__youtubeMediaCounterTracker?.stop();
   chrome.runtime.onMessage.addListener(messageListener);
   const activeIntervalId = setInterval(tick, 1000);
 
-  globalThis.__youtubeMediaCounterTracker = {
-    stop() {
-      clearInterval(activeIntervalId);
+  function stop() {
+    clearInterval(activeIntervalId);
+    document.getElementById(PIN_BUTTON_ID)?.remove();
+    removePinPrompt();
+    try {
       chrome.runtime.onMessage.removeListener(messageListener);
       chrome.storage.onChanged.removeListener(storageListener);
-      document.getElementById(PIN_BUTTON_ID)?.remove();
-      removePinPrompt();
-    },
-  };
+    } catch {
+      // The extension context is already gone, and its listeners with it.
+    }
+  }
+
+  globalThis.__youtubeMediaCounterTracker = { stop };
 }

@@ -21,6 +21,7 @@ export default {
   durationUnderMinute: "< 1 хв",
 
   // Settings
+  appearance: "Вигляд",
   theme: "Тема",
   themeSystem: "Як у браузері",
   themeLight: "Світла",
@@ -43,9 +44,12 @@ export default {
   colorPurple: "Фіолетовий",
   colorOrange: "Помаранчевий",
   colorGray: "Сірий",
+  syncDevices: "Синхронізувати між пристроями",
+  syncHint: "Час і топ каналів складаються з усіх пристроїв, де Chrome увійшов у ваш обліковий запис Google з увімкненою синхронізацією. Перемикач діє лише на цьому пристрої.",
   data: "Дані",
   resetAll: "Обнулити весь час",
   resetConfirm: "Стерти час і статистику каналів на всіх пристроях?",
+  resetConfirmLocal: "Стерти час і статистику каналів на цьому пристрої?",
   cancel: "Скасувати",
   reset: "Обнулити",
   resetDone: "Час обнулено.",

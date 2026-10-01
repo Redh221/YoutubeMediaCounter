@@ -1,11 +1,12 @@
 // Runs in the page's own world, where YouTube's player API lives (the content script can't reach it).
 // The content script sends a command as a DOM event and reads the result back from an attribute:
 // dispatchEvent is synchronous, so the answer is there as soon as the call returns.
-if (!window.__youtubeMediaCounterBridge) {
-  window.__youtubeMediaCounterBridge = true;
-
+{
   const COMMAND_EVENT = "ymc-player-command";
   const RESULT_ATTRIBUTE = "data-ymc-player";
+
+  // A newer copy (injected after an extension update) replaces the old one instead of being skipped.
+  window.__youtubeMediaCounterBridge?.remove?.();
 
   function getPlayer() {
     const selector = location.pathname.startsWith("/shorts/") ? "#shorts-player" : "#movie_player";
@@ -13,7 +14,18 @@ if (!window.__youtubeMediaCounterBridge) {
     return typeof player?.getVolume === "function" ? player : null;
   }
 
-  document.addEventListener(COMMAND_EVENT, (event) => {
+  // The channel of the video the player is actually playing. Unlike the channel link on the page,
+  // it can't lag behind after switching videos.
+  function getOwner(player) {
+    const response = player.getPlayerResponse?.();
+    const details = response?.videoDetails;
+    if (!details?.author) return null;
+    const profileUrl = response.microformat?.playerMicroformatRenderer?.ownerProfileUrl;
+    const href = profileUrl || (details.channelId ? `/channel/${details.channelId}` : null);
+    return href ? { name: details.author, href } : null;
+  }
+
+  function onCommand(event) {
     const player = getPlayer();
     if (!player) {
       document.documentElement.removeAttribute(RESULT_ATTRIBUTE);
@@ -34,7 +46,12 @@ if (!window.__youtubeMediaCounterBridge) {
 
     document.documentElement.setAttribute(
       RESULT_ATTRIBUTE,
-      JSON.stringify({ volume: player.getVolume(), muted: player.isMuted() }),
+      JSON.stringify({ volume: player.getVolume(), muted: player.isMuted(), owner: getOwner(player) }),
     );
-  });
+  }
+
+  document.addEventListener(COMMAND_EVENT, onCommand);
+  window.__youtubeMediaCounterBridge = {
+    remove: () => document.removeEventListener(COMMAND_EVENT, onCommand),
+  };
 }

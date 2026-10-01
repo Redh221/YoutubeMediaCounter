@@ -21,16 +21,15 @@ function segmented(name, options) {
 const template = () => `
   <form class="settings-form">
     <fieldset class="settings-group">
-      <legend>${t("theme")}</legend>
-      ${segmented("theme", THEMES)}
-    </fieldset>
-
-    <fieldset class="settings-group">
-      <legend>${t("language")}</legend>
-      <select name="language" class="settings-select" aria-label="${t("language")}">
-        <option value="auto">${t("languageAuto")}</option>
-        ${LANGUAGES.map((language) => `<option value="${language.code}">${languageLabel(language)}</option>`).join("")}
-      </select>
+      <legend>${t("appearance")}</legend>
+      <div role="group" aria-label="${t("theme")}">${segmented("theme", THEMES)}</div>
+      <label class="settings-row">
+        <span>${t("language")}</span>
+        <select name="language" class="settings-select">
+          <option value="auto">${t("languageAuto")}</option>
+          ${LANGUAGES.map((language) => `<option value="${language.code}">${languageLabel(language)}</option>`).join("")}
+        </select>
+      </label>
     </fieldset>
 
     <fieldset class="settings-group">
@@ -63,9 +62,13 @@ const template = () => `
 
     <fieldset class="settings-group">
       <legend>${t("data")}</legend>
+      <label class="settings-switch" title="${t("syncHint")}">
+        <span>${t("syncDevices")}</span>
+        <input type="checkbox" name="syncEnabled" role="switch" />
+      </label>
       <button type="button" data-action="reset" class="settings-button">${t("resetAll")}</button>
       <div class="settings-confirm" hidden>
-        <span>${t("resetConfirm")}</span>
+        <span data-ref="reset-question"></span>
         <button type="button" data-action="cancel-reset" class="settings-button">${t("cancel")}</button>
         <button type="button" data-action="confirm-reset" class="settings-button settings-danger">${t("reset")}</button>
       </div>
@@ -81,7 +84,13 @@ export async function mountSettings(container) {
   const confirmBox = form.querySelector(".settings-confirm");
   const note = form.querySelector(".settings-note");
 
-  const settings = await loadSettings();
+  const resetQuestion = form.querySelector('[data-ref="reset-question"]');
+
+  const [settings, { syncEnabled }] = await Promise.all([
+    loadSettings(),
+    chrome.storage.local.get({ syncEnabled: true }),
+  ]);
+  form.syncEnabled.checked = syncEnabled;
   form.showBadge.checked = settings.showBadge;
   form.badgePeriod.value = settings.badgePeriod;
   form.badgeFormat.value = settings.badgeFormat;
@@ -92,6 +101,11 @@ export async function mountSettings(container) {
   form.addEventListener("change", (event) => {
     const { name, type, checked, value } = event.target;
     if (!name) return;
+    // Sync is a per-device switch, kept apart from the settings that follow the Google account.
+    if (name === "syncEnabled") {
+      chrome.runtime.sendMessage({ type: "SET_SYNC_ENABLED", enabled: checked });
+      return;
+    }
     saveSettings({ [name]: type === "checkbox" ? checked : value });
   });
 
@@ -99,6 +113,7 @@ export async function mountSettings(container) {
   form.addEventListener("click", async (event) => {
     const action = event.target.dataset?.action;
     if (action === "reset") {
+      resetQuestion.textContent = form.syncEnabled.checked ? t("resetConfirm") : t("resetConfirmLocal");
       resetButton.hidden = true;
       confirmBox.hidden = false;
       note.textContent = "";

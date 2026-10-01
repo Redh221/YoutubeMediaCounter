@@ -2,6 +2,7 @@ import { formatDuration, setupI18n, t } from "../shared/i18n.js";
 import { mountSettings } from "../shared/settings-form.js";
 import { focusTab, mountPlayer, sendToTab } from "../shared/player-card.js";
 import { applyTheme } from "../shared/theme.js";
+import { isYouTubeUrl } from "../shared/youtube.js";
 
 applyTheme();
 await setupI18n();
@@ -90,7 +91,7 @@ function renderNowPlaying(playing) {
 
 async function refresh() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  const onYouTube = tab?.id && /^https?:\/\/([^/]+\.)?youtube\.com\//.test(tab.url ?? "");
+  const onYouTube = tab?.id && isYouTubeUrl(tab.url);
 
   // Each part renders on its own so one failing request doesn't blank the whole popup.
   const [total, weekStats, playing] = await Promise.allSettled([

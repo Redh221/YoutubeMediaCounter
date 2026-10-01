@@ -1,9 +1,10 @@
-.settings-form { display: grid; gap: 12px; font-size: 13px; }
+/* Compact enough that the whole form fits in the popup without scrolling. */
+.settings-form { display: grid; gap: 8px; font-size: 13px; }
 .settings-form [hidden] { display: none; }
 
 .settings-group {
-  display: grid; gap: 12px; margin: 0; padding: 12px 14px 14px;
-  border: 1px solid var(--line, #e3e6eb); border-radius: 16px; background: var(--surface, #fff);
+  display: grid; gap: 8px; margin: 0; padding: 8px 12px 10px;
+  border: 1px solid var(--line, #e3e6eb); border-radius: 14px; background: var(--surface, #fff);
 }
 .settings-group legend {
   float: left; width: 100%; margin: 0; padding: 0;
@@ -11,7 +12,7 @@
 }
 
 .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.settings-row > .settings-segmented { flex: 0 1 200px; }
+.settings-row > .settings-segmented, .settings-row > .settings-select { flex: 0 1 200px; }
 
 /* Segmented control built from radio buttons */
 .settings-segmented {
@@ -21,7 +22,7 @@
 .settings-segmented label { position: relative; cursor: pointer; }
 .settings-segmented input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .settings-segmented span {
-  display: block; padding: 6px 4px; border-radius: 999px;
+  display: block; padding: 4px; border-radius: 999px;
   color: var(--muted, #5f6672); font-size: 12px; text-align: center; white-space: nowrap;
   transition: background-color 0.15s, color 0.15s;
 }
@@ -47,7 +48,7 @@
 .settings-switch input:focus-visible { outline: 2px solid var(--accent, #e62117); outline-offset: 2px; }
 
 .settings-select {
-  width: 100%; padding: 7px 12px; border: 1px solid var(--line, #d0d5dd); border-radius: 999px;
+  min-width: 0; padding: 4px 10px; border: 1px solid var(--line, #d0d5dd); border-radius: 999px;
   background: var(--bg, #f2f4f7); color: var(--ink, #16191f); font: inherit; cursor: pointer;
 }
 .settings-select:focus-visible { outline: 2px solid var(--accent, #e62117); outline-offset: 2px; }
@@ -61,7 +62,7 @@
 .settings-swatch input:focus-visible + span { outline: 2px solid var(--accent, #e62117); outline-offset: 4px; }
 
 .settings-button {
-  padding: 8px 14px; border: 1px solid var(--line, #d0d5dd); border-radius: 999px;
+  padding: 6px 12px; border: 1px solid var(--line, #d0d5dd); border-radius: 999px;
   background: var(--surface, #fff); color: var(--ink, #16191f); cursor: pointer; font: inherit; font-weight: 500;
   transition: background-color 0.15s;
 }

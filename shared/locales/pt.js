@@ -21,6 +21,7 @@ export default {
   durationUnderMinute: "< 1 min",
 
   // Settings
+  appearance: "Aparência",
   theme: "Tema",
   themeSystem: "Como o navegador",
   themeLight: "Claro",
@@ -43,9 +44,12 @@ export default {
   colorPurple: "Roxo",
   colorOrange: "Laranja",
   colorGray: "Cinza",
+  syncDevices: "Sincronizar entre dispositivos",
+  syncHint: "O tempo e os canais mais vistos são somados em todos os dispositivos em que o Chrome está conectado à sua conta do Google com a sincronização ativada. A chave vale apenas para este dispositivo.",
   data: "Dados",
   resetAll: "Zerar todo o tempo",
   resetConfirm: "Apagar o tempo e as estatísticas de canais em todos os dispositivos?",
+  resetConfirmLocal: "Apagar o tempo e as estatísticas de canais neste dispositivo?",
   cancel: "Cancelar",
   reset: "Zerar",
   resetDone: "O tempo foi zerado.",

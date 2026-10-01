@@ -21,6 +21,7 @@ export default {
   durationUnderMinute: "< 1 min",
 
   // Settings
+  appearance: "Appearance",
   theme: "Theme",
   themeSystem: "Browser",
   themeLight: "Light",
@@ -43,9 +44,12 @@ export default {
   colorPurple: "Purple",
   colorOrange: "Orange",
   colorGray: "Gray",
+  syncDevices: "Sync across devices",
+  syncHint: "Watch time and top channels add up across all devices where Chrome is signed in to your Google account with sync on. The switch applies to this device only.",
   data: "Data",
   resetAll: "Reset all time",
   resetConfirm: "Erase watch time and channel stats on all devices?",
+  resetConfirmLocal: "Erase watch time and channel stats on this device?",
   cancel: "Cancel",
   reset: "Reset",
   resetDone: "Time has been reset.",

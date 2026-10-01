@@ -48,6 +48,6 @@
       "matches": ["*://www.youtube.com/*", "*://youtube.com/*"]
     }
   ],
-  "permissions": ["tabs", "scripting", "storage", "alarms"],
+  "permissions": ["scripting", "storage", "alarms"],
   "host_permissions": ["*://www.youtube.com/*", "*://youtube.com/*"]
 }

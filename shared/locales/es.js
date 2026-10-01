@@ -21,6 +21,7 @@ export default {
   durationUnderMinute: "< 1 min",
 
   // Settings
+  appearance: "Apariencia",
   theme: "Tema",
   themeSystem: "Como el navegador",
   themeLight: "Claro",
@@ -43,9 +44,12 @@ export default {
   colorPurple: "Morado",
   colorOrange: "Naranja",
   colorGray: "Gris",
+  syncDevices: "Sincronizar entre dispositivos",
+  syncHint: "El tiempo y los canales más vistos se suman en todos los dispositivos donde Chrome tiene sesión iniciada con tu cuenta de Google y la sincronización activada. El interruptor solo afecta a este dispositivo.",
   data: "Datos",
   resetAll: "Restablecer todo el tiempo",
   resetConfirm: "¿Borrar el tiempo y las estadísticas de canales en todos los dispositivos?",
+  resetConfirmLocal: "¿Borrar el tiempo y las estadísticas de canales en este dispositivo?",
   cancel: "Cancelar",
   reset: "Restablecer",
   resetDone: "Tiempo restablecido.",

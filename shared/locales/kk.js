@@ -21,6 +21,7 @@ export default {
   durationUnderMinute: "< 1 мин",
 
   // Settings
+  appearance: "Көрініс",
   theme: "Тақырып",
   themeSystem: "Браузердегідей",
   themeLight: "Ашық",
@@ -43,9 +44,12 @@ export default {
   colorPurple: "Күлгін",
   colorOrange: "Қызғылт сары",
   colorGray: "Сұр",
+  syncDevices: "Құрылғылар арасында синхрондау",
+  syncHint: "Уақыт пен үздік арналар Chrome синхрондауы қосулы Google аккаунтыңызға кірген барлық құрылғылардан қосылады. Ауыстырғыш тек осы құрылғыда әрекет етеді.",
   data: "Деректер",
   resetAll: "Барлық уақытты нөлдеу",
   resetConfirm: "Барлық құрылғыдағы уақыт пен арна статистикасын өшіру керек пе?",
+  resetConfirmLocal: "Осы құрылғыдағы уақыт пен арна статистикасын өшіру керек пе?",
   cancel: "Бас тарту",
   reset: "Нөлдеу",
   resetDone: "Уақыт нөлденді.",
